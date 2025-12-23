@@ -75,6 +75,9 @@ def main():
             if event.type == pg.MOUSEBUTTONDOWN:
                 if stage1_rect.collidepoint(event.pos):
                     pg.mixer.music.stop()  #ゲーム開始前にBGMを止める
+                    pg.quit()
+                    subprocess.run([sys.executable, "shine.py"])
+                    sys.exit()
                     militaly_mode.run_military_mode(screen)  # STAGE 1 をクリックした時の処理を書く
                     pg.mixer.music.play(-1) # ゲームから戻ってきたら再度再生
                 if stage2_rect.collidepoint(event.pos):
