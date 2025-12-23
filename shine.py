@@ -154,7 +154,7 @@ class Gate(pg.sprite.Sprite):
         self.rect.x = x
         self.rect.y = y
 
-    def update(self):
+    def update(self, game_state):
         """下に落ちる処理"""
         self.rect.y += 5
         # 画面外に出たら消える
@@ -187,7 +187,7 @@ class Enemy(pg.sprite.Sprite):
         max_hp = 1000 + (level-1) * 10000
         self.hp = random.randint(min_hp, max_hp)
 
-    def update(self):
+    def update(self, screen: pg.Surface):
         """下に降りてくる処理"""
         if self.rect.top < HEIGHT: 
             self.rect.y += 4
@@ -233,22 +233,30 @@ class Advertisement:
         screen.blit(self.img, [WIDTH/4, 0])
         screen.blit(self.surx, self.surx_rct)
         screen.blit(self.imgx, self.surx_rct)
-        
+
 def main():
-    def reset_game():
-        player = Koukaton()
-        enemy = Enemy(1)
-        gates = pg.sprite.Group()
-        all_sprites = pg.sprite.Group()
+    pg.init()
+    screen = pg.display.set_mode((WIDTH, HEIGHT))
+    pg.display.set_caption("ラストコカー・コカー")
+    clock = pg.time.Clock()
+    
+    font = pg.font.SysFont("mspgothic", 30)
+    big_font = pg.font.SysFont("arial", 60, bold=True)
+    advertisement = Advertisement()
 
-        all_sprites.add(player)
-
+    # ゲームの状態を保持する変数群（初期値）
+    def get_initial_state(current_level=1, current_count=1):
+        p = Koukaton()
+        p.count = current_count
+        e = Enemy(current_level)
+        all_spr = pg.sprite.Group()
+        all_spr.add(p)
         return {
-            "player": player,
-            "enemy": enemy,
-            "gates": gates,
-            "all_sprites": all_sprites,
-            "level": 1,
+            "player": p,
+            "enemy": e,
+            "gates": pg.sprite.Group(),
+            "all_sprites": all_spr,
+            "level": current_level,
             "game_state": STATE_RUNNING,
             "spawned_gates": 0,
             "passed_gates": 0,
@@ -257,222 +265,115 @@ def main():
             "result_start_time": 0,
             "is_win": False,
         }
-    
-    game = reset_game()
-    player = game["player"]
-    enemy = game["enemy"]
-    gates = game["gates"]
-    all_sprites = game["all_sprites"]
 
-    level = game["level"]
-    game_state = game["game_state"]
-    spawned_gates = game["spawned_gates"]
-    passed_gates = game["passed_gates"]
-    gate_timer = game["gate_timer"]
-    batch_counter = game["batch_counter"]
-    result_start_time = game["result_start_time"]
-    is_win = game["is_win"]
-
-    pg.init()
-    screen = pg.display.set_mode((WIDTH, HEIGHT))
-    pg.display.set_caption("ラストコカー・コカー")
-    clock = pg.time.Clock()
-    
-    # フォントの準備
-    font = pg.font.SysFont("mspgothic", 30)
-    big_font = pg.font.SysFont("arial", 60, bold=True)
-
-    # スプライトをまとめるグループ
-    all_sprites = pg.sprite.Group()
-    gates = pg.sprite.Group()
-    
-    # プレイヤー作成
-    player = Koukaton()
-    
-    # ゲーム管理用の変数
-    level = 1
-    enemy = Enemy(level)
-    game_state = STATE_RUNNING
-    
-    spawned_gates = 0    # 出したゲートの数
-    passed_gates = 0     # 通過したゲートの数
-    
-    gate_timer = 0       # 時間を数える変数
-    batch_counter = 0    # ゲートペアのID
-    
-    result_start_time = 0 # 結果画面が出た時間
-    is_win = False
-
-    advertisement = Advertisement()
+    # 初回スタート
+    g = get_initial_state()
 
     while True:
-        # --- イベント処理（×ボタンで終了） ---
+        # --- イベント処理 ---
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 pg.quit()
                 sys.exit()
             if event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
                 if advertisement.surx_rct.collidepoint(event.pos):
-                        game = reset_game()
-                        player = game["player"]
-                        enemy = game["enemy"]
-                        gates = game["gates"]
-                        all_sprites = game["all_sprites"]
+                    # ×ボタンでゲームリスタート
+                    g = get_initial_state()
 
-                        level = game["level"]
-                        game_state = game["game_state"]
-                        spawned_gates = game["spawned_gates"]
-                        passed_gates = game["passed_gates"]
-                        gate_timer = game["gate_timer"]
-                        batch_counter = game["batch_counter"]
-                        result_start_time = game["result_start_time"]
-                        is_win = game["is_win"]
+        # 変数が使いやすいように参照を抽出
+        player = g["player"]
+        enemy = g["enemy"]
+        gates = g["gates"]
+        all_sprites = g["all_sprites"]
 
         # --- ゲートを出す処理 ---
-        if game_state == STATE_RUNNING:
-            gate_timer += 1 # 時間を進める
-            
-            # 一定時間経過 かつ まだ出し切っていない場合
-            if gate_timer > GATE_SPAWN_TIME and spawned_gates < GATES_PER_ROUND:
-                gate_timer = 0 # タイマーリセット
-                batch_counter += 1
+        if g["game_state"] == STATE_RUNNING:
+            g["gate_timer"] += 1
+            if g["gate_timer"] > GATE_SPAWN_TIME and g["spawned_gates"] < GATES_PER_ROUND:
+                g["gate_timer"] = 0
+                g["batch_counter"] += 1
                 
-                # 左のゲート
-                gate_l = Gate(5, -100, WIDTH//2 - 10, 80, batch_counter)
-                gates.add(gate_l)
-                all_sprites.add(gate_l)
-
-                # 右のゲート
-                gate_r = Gate(WIDTH//2 + 5, -100, WIDTH//2 - 10, 80, batch_counter)
-                gates.add(gate_r)
-                all_sprites.add(gate_r)
-                
-                spawned_gates += 1
+                gl = Gate(5, -100, WIDTH//2 - 10, 80, g["batch_counter"])
+                gr = Gate(WIDTH//2 + 5, -100, WIDTH//2 - 10, 80, g["batch_counter"])
+                gates.add(gl, gr)
+                all_sprites.add(gl, gr)
+                g["spawned_gates"] += 1
 
         # --- ボス出現チェック ---
-        if game_state == STATE_RUNNING:
-            # ゲートを全部通過した、または全部出し終わって画面から消えたらボスへ
-            if passed_gates >= GATES_PER_ROUND or (spawned_gates >= GATES_PER_ROUND and len(gates) == 0):
-                game_state = STATE_BOSS
-                all_sprites.add(enemy) # ボスを画面に追加
+        if g["game_state"] == STATE_RUNNING:
+            if g["passed_gates"] >= GATES_PER_ROUND or (g["spawned_gates"] >= GATES_PER_ROUND and len(gates) == 0):
+                g["game_state"] = STATE_BOSS
+                all_sprites.add(enemy)
 
         # --- 更新処理 ---
-        if game_state == STATE_RUNNING or game_state == STATE_BOSS:
-            player.update(game_state)
-            all_sprites.update()
+        if g["game_state"] in [STATE_RUNNING, STATE_BOSS]:
+            player.update(g["game_state"])
+            all_sprites.update(g["game_state"])
         
-        # --- 当たり判定（プレイヤー vs ゲート） ---
-        if game_state == STATE_RUNNING:
-            hits = pg.sprite.spritecollide(player, gates, True) # ぶつかったら消える
+        # --- 当たり判定（ゲート） ---
+        if g["game_state"] == STATE_RUNNING:
+            hits = pg.sprite.spritecollide(player, gates, True)
             if hits:
-                passed_gates += 1
+                g["passed_gates"] += 1
                 for gate in hits:
                     player.apply_effect(gate.operator, gate.value)
-                    # ペアのもう片方も消す
                     for other in gates:
                         if other.batch_id == gate.batch_id:
                             other.kill()
 
-        # --- 当たり判定（プレイヤー vs ボス） ---
-        if game_state == STATE_BOSS:
+        # --- 当たり判定（ボス） ---
+        if g["game_state"] == STATE_BOSS:
             if pg.sprite.collide_rect(player, enemy):
-                game_state = STATE_RESULT
-                result_start_time = pg.time.get_ticks()
-                # 数がボスのHP以上なら勝ち
-                if player.count >= enemy.hp:
-                    is_win = True
-                else:
-                    is_win = False
+                g["game_state"] = STATE_RESULT
+                g["result_start_time"] = pg.time.get_ticks()
+                g["is_win"] = player.count >= enemy.hp
 
         # --- 全滅判定 ---
-        if game_state != STATE_RESULT and player.count <= 0:
-            game_state = STATE_RESULT
-            result_start_time = pg.time.get_ticks()
-            is_win = False # 負け
+        if g["game_state"] != STATE_RESULT and player.count <= 0:
+            g["game_state"] = STATE_RESULT
+            g["result_start_time"] = pg.time.get_ticks()
+            g["is_win"] = False
 
         # --- 描画処理 ---
-        screen.fill(BLACK) # 背景を黒にする
-        
-        # 縦線を描く
+        screen.fill(BLACK)
         pg.draw.line(screen, (50, 50, 50), (WIDTH//2, 0), (WIDTH//2, HEIGHT), 2)
-        
-        all_sprites.draw(screen)   # ゲートやボスを描画
-        player.draw_swarm(screen)  # 自軍を描画
+        all_sprites.draw(screen)
+        player.draw_swarm(screen)
 
-        # 文字情報の表示
-        info_text = font.render(f"自軍: {player.count} (Lv.{level})", True, WHITE)
+        info_text = font.render(f"自軍: {player.count} (Lv.{g['level']})", True, WHITE)
         screen.blit(info_text, (player.rect.centerx + 60, player.rect.bottom))
         
-        gate_text = font.render(f"GATE: {passed_gates}/{GATES_PER_ROUND}", True, (200, 200, 200))
-        screen.blit(gate_text, (10, 50))
-
-        # ボスのHP表示
-        if game_state == STATE_BOSS or game_state == STATE_RESULT:
-            if enemy.alive():
-                enemy.draw_hp(screen, font)
-        
-        # 進行バーの表示
-        if game_state == STATE_RUNNING:
-            ratio = passed_gates / GATES_PER_ROUND
-            if ratio > 1.0: ratio = 1.0
-            
-            # バーの枠
+        if g["game_state"] == STATE_RUNNING:
+            ratio = g["passed_gates"] / GATES_PER_ROUND
             pg.draw.rect(screen, WHITE, (100, 20, 400, 20), 2)
-            # 中身（青色）
-            pg.draw.rect(screen, BLUE, (100, 20, 400 * ratio, 20))
+            pg.draw.rect(screen, BLUE, (100, 20, 400 * min(ratio, 1.0), 20))
+
+        if enemy.alive() and (g["game_state"] in [STATE_BOSS, STATE_RESULT]):
+            enemy.draw_hp(screen, font)
 
         # --- 結果画面 ---
-        if game_state == STATE_RESULT:
-            # 画面を少し暗くする
+        if g["game_state"] == STATE_RESULT:
             overlay = pg.Surface((WIDTH, HEIGHT))
             overlay.fill(BLACK)
             overlay.set_alpha(150)
             screen.blit(overlay, (0, 0))
 
-            if is_win:
+            if g["is_win"]:
                 msg = big_font.render("YOU WIN!", True, BLUE)
-                detail = font.render(f"現こうかとん: {player.count - enemy.hp}ひき", True, WHITE)
-                next_msg = font.render("Next Round...", True, WHITE)
+                detail = font.render(f"残り: {player.count - enemy.hp}ひき", True, WHITE)
+                screen.blit(msg, (WIDTH//2 - 150, HEIGHT//2 - 50))
+                screen.blit(detail, (WIDTH//2 - 100, HEIGHT//2 + 20))
+                
+                if pg.time.get_ticks() - g["result_start_time"] > 3000:
+                    # 次のレベルへ
+                    new_count = max(1, player.count - enemy.hp)
+                    g = get_initial_state(g["level"] + 1, new_count)
             else:
-                if player.count <= 0:
-                    msg = big_font.render("GAME OVER", True, RED)
-                    detail = font.render("lose...", True, WHITE)
-                else:
-                    msg = big_font.render("YOU LOSE...", True, RED)
-                    detail = font.render(f" 最終結果{enemy.hp - player.count}ひき", True, WHITE)
-                next_msg = font.render("", True, WHITE)
-
-            # 文字を画面中央に配置
-            screen.blit(msg, (WIDTH//2 - 150, HEIGHT//2 - 50))
-            screen.blit(detail, (WIDTH//2 - 100, HEIGHT//2 + 20))
-            screen.blit(next_msg, (WIDTH//2 - 80, HEIGHT//2 + 60))
-
-            # 3秒経過後の処理
-            if pg.time.get_ticks() - result_start_time > 3000:
-                if is_win:
-                    # 次のラウンドへ進む処理
-                    player.count -= enemy.hp # コストを払う
-                    if player.count < 1: player.count = 1
-                    level += 1
-                    
-                    # 状態をリセット
-                    game_state = STATE_RUNNING
-                    spawned_gates = 0
-                    passed_gates = 0
-                    gate_timer = 0
-                    
-                    player.reset_position() # プレイヤー位置リセット
-                    enemy.kill()            # 今のボスを消す
-                    gates.empty()           # ゲートを全部消す
-                    all_sprites.empty()     # グループを空にする
-                    
-                    enemy = Enemy(level)    # 新しいボスを作る
-                else:
-                    advertisement.update(screen)
-                    pg.display.update()
-                    pg.time.wait(20000)
-                    pg.quit()
-                    sys.exit()
+                msg = big_font.render("GAME OVER", True, RED)
+                screen.blit(msg, (WIDTH//2 - 150, HEIGHT//2 - 50))
+                advertisement.update(screen)
+                # 負けた時は広告を表示して停止、またはクリック待ちにする
+                # (ここでは元のロジック通り20秒待機か×で終了)
 
         pg.display.update()
         clock.tick(FPS)
