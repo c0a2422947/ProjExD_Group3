@@ -44,7 +44,7 @@ def main():
 
     # 背景として使う
     military_bg_img = pg.image.load("fig/militaly.png").convert() 
-    arrow_bg_img = pg.image.load("fig/arrow.png").convert()
+    arrow_bg_img = pg.image.load("fig/arrow_bg.png").convert()
 
     HALF_WIDTH = WIDTH // 2
     # 画面の左半分にフィットするようにリサイズ (1100 / 2 = 550)
