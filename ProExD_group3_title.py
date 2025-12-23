@@ -1,6 +1,7 @@
 import math
 import os
 import random
+import subprocess
 import sys
 import time
 import pygame as pg
@@ -43,12 +44,14 @@ def main():
             if event.type == pg.QUIT:
                 running = False
 
-            # クリック処理（中身は後で追加）
+            # クリック処理
             if event.type == pg.MOUSEBUTTONDOWN:
                 if stage1_rect.collidepoint(event.pos):
-                    return 0  # STAGE 1 をクリックした時の処理を書く
+                    return 0  
                 if stage2_rect.collidepoint(event.pos):
-                    return 0  # STAGE 2 をクリックした時の処理を書く
+                    pg.quit()  # コカー・コカーを起動する前にPygameを終了
+                    subprocess.run([sys.executable, "stage2.py"])  # stage2.pyを新しいプロセスで実行  
+                    return
 
         # 描画
         screen.fill(BLACK)
