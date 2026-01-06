@@ -403,8 +403,6 @@ def main():
             if g["is_win"]:
                 msg = big_font.render("YOU WIN!", True, BLUE)
                 detail = font.render(f"残り: {player.count - enemy.hp}ひき", True, WHITE)
-                screen.blit(msg, (WIDTH//2 - 150, HEIGHT//2 - 50))
-                screen.blit(detail, (WIDTH//2 - 100, HEIGHT//2 + 20))
                 
                 if pg.time.get_ticks() - g["result_start_time"] > 3000:
                     # 次のレベルへ
@@ -417,12 +415,12 @@ def main():
                 else:
                     msg = big_font.render("YOU LOSE...", True, RED)
                     detail = font.render(f"最終結果 {enemy.hp - player.count}ひき不足", True, WHITE)
-                next_msg = font.render("", True, WHITE)
+                # next_msg = font.render("", True, WHITE)  #これは何...？
 
             # 文字を画面中央に配置
             screen.blit(msg, (WIDTH//2 - 150, HEIGHT//2 - 50))
             screen.blit(detail, (WIDTH//2 - 150, HEIGHT//2 + 20))
-            screen.blit(next_msg, (WIDTH//2 - 80, HEIGHT//2 + 60))
+            # screen.blit(next_msg, (WIDTH//2 - 80, HEIGHT//2 + 60))  #これは何...？
 
             # 3秒経過後の処理
             if pg.time.get_ticks() - g["result_start_time"] > 3000:
